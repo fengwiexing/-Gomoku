@@ -1,0 +1,305 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title></title>
+	<meta charset="utf-8" />
+    <style>
+        body{
+            background:#000000;
+        }
+        #chess{
+            border:1px solid #999; box-shadow:3px 5px 5px #808080;
+            margin:50px auto 10px; background:#fff;display:block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="chess" width="450" height="450"></canvas>
+    <a href="javascript:" id="btn" style="display:block; width:75px; padding:5px 0; text-align:center;border-radius:3px; margin:auto; text-decoration:none;background:#bfb8b8;box-shadow:2px 3px 1px #808080; text-shadow:1.5px 2px 0.5px #133051">开始下棋</a>
+    <script>
+        (function () {
+            var morpion = function (btn) {
+                //初始化数据
+                this.init();
+                //哪种颜色棋子先下，默认为黑色先下；
+                this.me = true;
+                //获取鼠标坐标绘制棋子
+                this.coordinate();
+                //控制游戏开始
+                this.btn = btn;
+            }
+            morpion.prototype = {
+                //初始化棋盘
+                init: function () {
+                    this.chess = document.getElementById('chess');
+                    var context = this.context = chess.getContext('2d'),
+                         chessman = this.chessman = new Array(15),
+                      winCountArr = this.winCountArr = [];//所有的赢法的数组
+                    this.count = 0;//所有的赢法的计数
+                    this.meWinArr = [];//我方的赢法数组
+                    this.ComputerWinArr = [];//电脑赢法的数组
+
+                    for (var i = 0; i < 15; i++) {
+                        context.beginPath();
+                        context.moveTo(15, 15 + 30 * i);
+                        context.lineTo(435, 15 + 30 * i);
+                        context.stroke();
+                        context.moveTo(15 + 30 * i, 15);
+                        context.lineTo(15 + 30 * i, 435);
+                        context.stroke();
+
+                        chessman[i] = new Array(15);
+                        winCountArr[i] = [];
+                        for (var j = 0; j < 15; j++) {
+                            chessman[i][j] = 0;
+                            winCountArr[i][j] = [];
+                        }
+
+                    }
+
+                },
+                //绘制棋子
+                oneStep: function (i, j, me) {
+                    var context = this.context;
+                    context.beginPath();
+                    context.arc(15 + i * 30, 15 + j * 30, 13, 0, 2 * Math.PI);
+                    context.closePath();
+                    var gradientColor = context.createRadialGradient(15 + i * 30, 15 + j * 30, 0, 15 + i * 30, 15 + j * 30, 13);
+                    if (me) {
+                        gradientColor.addColorStop(0, "#636766")
+                        gradientColor.addColorStop(1, "#0A0A0A")
+                    } else {
+                        gradientColor.addColorStop(0, "#f9f9f9")
+                        gradientColor.addColorStop(1, "#bfb8b8")
+                    }
+                    context.fillStyle = gradientColor;
+                    context.fill();
+                },
+                //获取鼠标坐标绘制棋子
+                coordinate: function () {
+                    //所有的赢法统计
+                    this.winCount();
+
+                    var chess = this.chess,
+                        context = this.context,
+                        self = this,
+
+                        count = this.count,
+                      meWinArr = this.meWinArr,//我方赢法数组
+                     ComputerWinArr = this.ComputerWinArr,//电脑方赢法数组
+                     winCountArr = this.winCountArr;//所有赢法数组
+                    self.over = false;
+
+                    chess.onclick = function (e) {
+                        //控件开始游戏
+                        if (self.btn) {
+                            if (self.over) {
+                                return;
+                            };
+
+                            if (!self.me) {
+                                self.me = true;
+                            }
+                            var X = e.offsetX,
+                                Y = e.offsetY,
+                            i = parseInt(X / 30),
+                            j = parseInt(Y / 30),
+                            chessman = self.chessman;
+                            //如果已绘制有棋子，就不再绘制棋子
+                            if (chessman[i][j] == 0) {
+                                self.oneStep(i, j, self.me);
+                                chessman[i][j] = 1;
+                                for (var k = 0; k < count; k++) {
+                                    if (winCountArr[i][j][k]) {
+                                        meWinArr[k]++;
+                                        ComputerWinArr[k] = 6;
+                                        if (meWinArr[k] == 5) {
+                                            alert('你赢了');
+                                            self.over = true;
+                                        }
+                                    }
+                                }
+                                if (!self.over) {
+                                    self.me = !self.me;
+                                    self.computerAI();
+                                }
+                            }
+                        } 
+                    }
+                },
+                computerAI: function (me) {
+                    var myScore = [],
+                    computerScore = [],
+                          count = this.count,
+                            meWinArr = this.meWinArr,//我方赢法数组
+                     ComputerWinArr = this.ComputerWinArr,//电脑方赢法数组
+                     winCountArr = this.winCountArr;//所有赢法数组
+
+                    var max = 0,
+                    u = 0,
+                    v = 0,
+                   chessman = this.chessman;
+
+                    for (var i = 0; i < 15; i++) {
+                        myScore[i] = [];
+                        computerScore[i] = [];
+                        for (var j = 0; j < 15; j++) {
+                            myScore[i][j] = 0;
+                            computerScore[i][j] = 0;
+                        }
+                    }
+
+                    for (var i = 0; i < 15; i++) {
+                        for (var j = 0; j < 15; j++) {
+                            if (chessman[i][j] == 0) {
+                                for (var k = 0; k < count; k++) {
+
+                                    if (winCountArr[i][j][k]) {
+
+                                        if (meWinArr[k] == 1) {
+                                            myScore[i][j] += 200;
+
+                                        } else if (meWinArr[k] == 2) {
+                                            myScore[i][j] += 400;
+
+                                        } else if (meWinArr[k] == 3) {
+                                            myScore[i][j] += 2000;
+
+                                        } else if (meWinArr[k] == 4) {
+                                            myScore[i][j] += 20000;
+                                        }
+
+                                        if (ComputerWinArr[k] == 1) {
+                                            computerScore[i][j] += 500;  //注意这里的数值越小难度越高
+
+                                        } else if (ComputerWinArr[k] == 2) {
+                                            computerScore[i][j] += 1000;  //注意这里的数值越小难度越高
+
+                                        } else if (ComputerWinArr[k] == 3) {
+                                            computerScore[i][j] += 2000; //注意这里的数值越小难度越高
+
+                                        } else if (ComputerWinArr[k] == 4) {
+                                            computerScore[i][j] += 20000; //注意这里的数值越小难度越高
+                                        }
+                                    }
+                                }
+
+                                if (myScore[i][j] > max) {
+                                    max = myScore[i][j];
+                                    u = i;
+                                    v = j;
+                                } else if (myScore[i][j] == max) {
+                                    if (computerScore[i][j] > computerScore[u][v]) {
+                                        u = i;
+                                        v = j;
+                                    }
+                                }
+                              //  解开注释更难下闯关
+                                if (computerScore[i][j] > max) {
+                                    max = computerScore[i][j];
+                                    u = i;
+                                    v = j;
+                                } else if (computerScore[i][j] == max) {
+                                    if (myScore[i][j] > myScore[u][v]) {
+                                        u = i;
+                                        v = j;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    this.oneStep(u, v, false);
+                    chessman[u][v] = 2;
+                    for (var k = 0; k < count; k++) {
+                        if (winCountArr[u][v][k]) {
+                            ComputerWinArr[k]++;
+
+                            meWinArr[k] = 6;
+                            if (ComputerWinArr[k] == 5) {
+                                alert('计算机赢了');
+                                this.over = true;
+                            }
+                        }
+                    }
+                    if (!this.over) {
+                        this.me = !this.me;
+                    }
+                },
+                //所有的赢法统计
+                winCount: function () {
+                    var winCountArr = this.winCountArr,
+                       count = 0,
+                       meWinArr = [],
+                       ComputerWinArr = [];
+
+                    //横线赢法
+                    for (var i = 0; i < 15; i++) {
+                        for (var j = 0; j < 11; j++) {
+                            for (var k = 0; k < 5; k++) {
+                                winCountArr[i][j + k][count] = true;
+                            }
+                            count++;
+                        }
+                    }
+                    //竖线赢法
+                    for (var i = 0; i < 15; i++) {
+                        for (var j = 0; j < 11; j++) {
+                            for (var k = 0; k < 5; k++) {
+                                winCountArr[j + k][i][count] = true;
+                            }
+                            count++;
+                        }
+                    }
+                    //斜线赢法
+                    for (var i = 0; i < 11; i++) {
+                        for (var j = 0; j < 11; j++) {
+                            for (var k = 0; k < 5; k++) {
+                                winCountArr[i + k][j + k][count] = true;
+                            }
+                            count++;
+                        }
+                    }
+                    //反斜线赢法
+                    for (var i = 0; i < 11; i++) {
+                        for (var j = 14; j > 3; j--) {
+                            for (var k = 0; k < 5; k++) {
+                                winCountArr[i + k][j - k][count] = true;
+                            }
+                            count++;
+                        }
+                    }
+
+                    this.winCountArr = winCountArr;
+                    this.count = count;
+
+                    //初始化我方和电脑方的赢法数组
+                    for (var i = 0; i < count; i++) {
+                        meWinArr[i] = 0;
+                        ComputerWinArr[i] = 0;
+                    }
+                    this.meWinArr = meWinArr;
+                    this.ComputerWinArr = ComputerWinArr;
+                },
+
+            }
+
+            window.morpion = morpion;
+        })();
+
+
+        new morpion(false);
+        var bool = true;
+        document.getElementById('btn').onclick = function () {
+            if (bool) {
+                var chess = document.getElementById('chess');
+                var context = chess.getContext('2d');
+                context.clearRect(0, 0, 450, 450);
+                new morpion(bool);
+                this.text="重新开始"
+            }
+        }
+  
+    </script>
+</body>
+</html>
